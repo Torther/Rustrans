@@ -4,6 +4,16 @@ use crate::models::{LLMRequest, LLMResponse, Message};
 use crate::config::Config;
 use pangu::spacing;
 
+// 全局HTTP客户端，复用连接池
+lazy_static::lazy_static! {
+    static ref HTTP_CLIENT: reqwest::Client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .pool_max_idle_per_host(10)
+        .pool_idle_timeout(std::time::Duration::from_secs(30))
+        .build()
+        .expect("Failed to create HTTP client");
+}
+
 /// 调用大模型进行翻译
 pub async fn translate_with_llm(
     config: &Config,
@@ -12,7 +22,7 @@ pub async fn translate_with_llm(
     to_lang: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let system_prompt = build_system_prompt(from_lang, to_lang);
-    
+
     let request_body = LLMRequest {
         model: config.model().to_string(),
         messages: vec![
@@ -27,23 +37,22 @@ pub async fn translate_with_llm(
         ],
         temperature: 0.3,
     };
-    
-    let client = reqwest::Client::new();
-    let response = client
+
+    let response = HTTP_CLIENT
         .post(config.api_url())
         .header("Authorization", format!("Bearer {}", config.api_key()))
         .header("Content-Type", "application/json")
         .json(&request_body)
         .send()
         .await?;
-    
+
     if !response.status().is_success() {
         let error_text = response.text().await?;
         return Err(format!("LLM API 错误: {}", error_text).into());
     }
-    
+
     let llm_response: LLMResponse = response.json().await?;
-    
+
     if let Some(choice) = llm_response.choices.first() {
         let translated = choice.message.content.trim();
         // 使用 pangu 优化排版
@@ -52,6 +61,85 @@ pub async fn translate_with_llm(
     } else {
         Err("未收到翻译结果".into())
     }
+}
+
+/// 批量翻译接口，提高处理效率
+pub async fn translate_batch_with_llm(
+    config: &Config,
+    texts: &[String],
+    from_lang: &str,
+    to_lang: &str,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let system_prompt = build_system_prompt(from_lang, to_lang);
+
+    let mut results = Vec::new();
+
+    // 批量处理多个文本
+    let tasks: Vec<_> = texts.iter().map(|text| {
+        let config = config.clone();
+        let system_prompt = system_prompt.clone();
+        let text = text.clone();
+
+        async move {
+            let request_body = LLMRequest {
+                model: config.model().to_string(),
+                messages: vec![
+                    Message {
+                        role: "system".to_string(),
+                        content: system_prompt,
+                    },
+                    Message {
+                        role: "user".to_string(),
+                        content: text,
+                    },
+                ],
+                temperature: 0.3,
+            };
+
+            match HTTP_CLIENT
+                .post(config.api_url())
+                .header("Authorization", format!("Bearer {}", config.api_key()))
+                .header("Content-Type", "application/json")
+                .json(&request_body)
+                .send()
+                .await
+            {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        match response.json::<LLMResponse>().await {
+                            Ok(llm_response) => {
+                                if let Some(choice) = llm_response.choices.first() {
+                                    let translated = choice.message.content.trim();
+                                    Ok(spacing(translated).to_string())
+                                } else {
+                                    Err("未收到翻译结果".to_string())
+                                }
+                            }
+                            Err(e) => Err(format!("解析响应失败: {}", e))
+                        }
+                    } else {
+                        match response.text().await {
+                            Ok(error_text) => Err(format!("LLM API 错误: {}", error_text)),
+                            Err(e) => Err(format!("读取错误响应失败: {}", e))
+                        }
+                    }
+                }
+                Err(e) => Err(format!("网络请求失败: {}", e))
+            }
+        }
+    }).collect();
+
+    // 并行执行所有翻译任务
+    let batch_results = futures::future::join_all(tasks).await;
+
+    for result in batch_results {
+        match result {
+            Ok(translated) => results.push(translated),
+            Err(e) => return Err(e.into()),
+        }
+    }
+
+    Ok(results)
 }
 
 /// 构建系统提示词
@@ -79,10 +167,10 @@ fn build_system_prompt(from_lang: &str, to_lang: &str) -> String {
 pub fn process_translation_result(original: &str, translated: &str) -> Vec<String> {
     let original_paragraphs: Vec<&str> = original.split('\n').collect();
     let translated_paragraphs: Vec<&str> = translated.split('\n').collect();
-    
+
     // 对每个段落进行 pangu 处理
     let format_paragraph = |s: &str| spacing(s).to_string();
-    
+
     // 如果段落数量匹配，处理每个段落
     if original_paragraphs.len() == translated_paragraphs.len() {
         return translated_paragraphs
@@ -90,7 +178,7 @@ pub fn process_translation_result(original: &str, translated: &str) -> Vec<Strin
             .map(|s| format_paragraph(s))
             .collect();
     }
-    
+
     // 如果不匹配，返回整体翻译结果（仍然进行 pangu 处理）
     vec![format_paragraph(translated)]
 }
@@ -114,7 +202,7 @@ mod tests {
         let result = process_translation_result(original, translated);
         assert_eq!(result, vec!["Combined translation"]);
     }
-    
+
     #[test]
     fn test_pangu_spacing() {
         let original = "第一段\n第二段";
@@ -124,4 +212,3 @@ mod tests {
         assert_eq!(result, vec!["这是 test 文本，包含 English 和中文混排"]);
     }
 }
-

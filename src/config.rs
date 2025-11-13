@@ -20,6 +20,15 @@ impl Config {
             llm_model: String::new(),
         }
     }
+
+    /// 创建新的配置实例
+    pub fn new(api_url: String, api_key: String, model: String) -> Self {
+        Self {
+            llm_api_key: api_key,
+            llm_api_url: api_url,
+            llm_model: model,
+        }
+    }
     
     /// 从配置文件加载
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, String> {

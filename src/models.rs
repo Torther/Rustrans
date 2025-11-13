@@ -1,14 +1,21 @@
 // 数据模型模块
 
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 // 划词翻译请求结构
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct TranslateRequest {
+    #[validate(length(min = 1, max = 100, message = "名称长度必须在1-100字符之间"))]
     #[allow(dead_code)]
     pub name: String,
+
+    #[validate(length(min = 1, max = 10000, message = "文本长度必须在1-10000字符之间"))]
     pub text: String,
+
+    #[validate(length(min = 1, max = 10, message = "目标语言列表不能为空且不能超过10个"))]
     pub destination: Vec<String>,
+
     pub source: Option<String>,
 }
 

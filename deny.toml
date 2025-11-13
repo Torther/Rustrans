@@ -1,0 +1,70 @@
+# 依赖安全策略配置
+
+[graph]
+# 排除开发依赖
+targets = ["x86_64-unknown-linux-gnu"]
+
+[output]
+# 输出格式
+format = "human"
+
+[licenses]
+# 允许的许可证
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+]
+# 拒绝的许可证
+deny = [
+    "GPL-2.0",
+    "GPL-3.0",
+    "AGPL-1.0",
+    "AGPL-3.0",
+]
+# 允许 OSI 批准的许可证
+allow-osi-fsf-free = "both"
+
+[[licenses.clarify]]
+# 针对可能有歧义的许可证进行澄清
+name = "ring"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 }
+]
+
+[bans]
+# 拒绝特定 crate
+multiple-versions = "warn"
+wildcards = "allow"
+
+# 拒绝特定版本的危险依赖
+[[bans.deny]]
+name = "openssl"
+version = "*"
+
+[[bans.deny]]
+name = "openssl-sys"
+version = "*"
+
+[sources]
+# 只允许官方和可信的源
+allow-git = [
+    "https://github.com/rust-lang/crates.io-index"
+]
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+[advisories]
+# 忽略特定咨询（如果需要）
+ignore = [
+    # "RUSTSEC-2020-0001"  # 示例
+]
+# 即使存在未被忽略的咨询，也继续检查
+vulnerability = "warn"
+unmaintained = "warn"
+yanked = "warn"

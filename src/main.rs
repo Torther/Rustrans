@@ -4,13 +4,16 @@ mod translator;
 mod handlers;
 mod config;
 mod admin;
+mod error;
+mod health;
 
-use actix_web::{App, HttpServer, web};
+use actix_web::{App, HttpServer, web, middleware};
 use actix_cors::Cors;
 use config::Config;
 use handlers::translate;
 use admin::{admin_index, get_config, update_config};
-use std::sync::{Arc, RwLock};
+use health::{health_check, metrics, llm_health_check, AppState};
+use std::sync::Arc;
 use std::env;
 use clap::Parser;
 
@@ -70,22 +73,32 @@ async fn main() -> std::io::Result<()> {
     };
     
     // 使用 Arc<RwLock> 包装配置，使其可以在运行时修改
-    let shared_config = Arc::new(RwLock::new(config));
-    
+    let shared_config = Arc::new(parking_lot::RwLock::new(config));
+
+    // 创建应用状态用于监控
+    let app_state = AppState::new();
+
     HttpServer::new(move || {
         let cors = Cors::default()
             .allow_any_origin()
             .allow_any_method()
             .allow_any_header()
             .max_age(3600);
-        
+
         App::new()
             .app_data(web::Data::new(shared_config.clone()))
+            .app_data(web::Data::new(app_state.clone()))
             .wrap(cors)
+            .wrap(middleware::Logger::default())
+            .wrap(middleware::Compress::default())
+            .wrap(middleware::NormalizePath::trim())
             .service(translate)
             .service(admin_index)
             .service(get_config)
             .service(update_config)
+            .service(health_check)
+            .service(metrics)
+            .service(llm_health_check)
     })
     .bind(("0.0.0.0", port))?
     .run()

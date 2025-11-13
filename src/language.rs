@@ -18,7 +18,8 @@ pub fn detect_language(text: &str) -> String {
         Lang::Por => "葡萄牙语".to_string(),
         Lang::Ita => "意大利语".to_string(),
         Lang::Vie => "越南语".to_string(),
-        Lang::Eng | _ => "英语".to_string(),
+        Lang::Eng => "英语".to_string(),
+        _ => "英语".to_string(),
     }
 }
 
