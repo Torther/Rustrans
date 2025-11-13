@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>翻译服务 - 配置管理</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen py-12 px-4">
+        <div class="max-w-2xl mx-auto">
+            <!-- 标题 -->
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-900">翻译服务配置</h1>
+                <p class="text-gray-600 mt-2">配置 LLM 模型参数</p>
+            </div>
+
+            <!-- 当前配置卡片 -->
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">当前配置</h2>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">API URL：</span>
+                        <span class="font-mono text-xs" id="current-url">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">模型：</span>
+                        <span class="font-mono" id="current-model">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">API Key：</span>
+                        <span class="font-mono text-xs" id="current-key">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 配置表单卡片 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">更新配置</h2>
+                <p class="text-sm text-gray-600 mb-4">可以单独更新任意配置项，无需填写全部字段</p>
+                <form id="config-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            API Key
+                        </label>
+                        <input 
+                            type="text" 
+                            id="llm_api_key" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="sk-..."
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            API URL
+                        </label>
+                        <input 
+                            type="text" 
+                            id="llm_api_url" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="https://api.openai.com/v1/chat/completions"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            模型
+                        </label>
+                        <input 
+                            type="text" 
+                            id="llm_model" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="gpt-4o-mini"
+                        >
+                    </div>
+
+                    <div class="pt-4">
+                        <button 
+                            type="submit" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                        >
+                            保存配置
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 消息提示 -->
+                <div id="message" class="mt-4 hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 加载当前配置
+        async function loadConfig() {
+            try {
+                const response = await fetch('/admin/config');
+                const data = await response.json();
+                
+                document.getElementById('current-url').textContent = data.llm_api_url || '未配置';
+                document.getElementById('current-model').textContent = data.llm_model || '未配置';
+                document.getElementById('current-key').textContent = data.llm_api_key_masked || '未配置';
+            } catch (error) {
+                showMessage('加载配置失败: ' + error.message, 'error');
+            }
+        }
+
+        // 显示消息
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `mt-4 p-4 rounded-lg ${
+                type === 'success' 
+                    ? 'bg-green-50 text-green-800 border border-green-200' 
+                    : 'bg-red-50 text-red-800 border border-red-200'
+            }`;
+            messageEl.classList.remove('hidden');
+            
+            setTimeout(() => {
+                messageEl.classList.add('hidden');
+            }, 3000);
+        }
+
+        // 提交表单
+        document.getElementById('config-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const apiKey = document.getElementById('llm_api_key').value.trim();
+            const apiUrl = document.getElementById('llm_api_url').value.trim();
+            const model = document.getElementById('llm_model').value.trim();
+
+            // 检查是否至少填写了一个字段
+            if (!apiKey && !apiUrl && !model) {
+                showMessage('请至少填写一个配置项', 'error');
+                return;
+            }
+
+            // 只发送非空字段
+            const data = {};
+            if (apiKey) data.llm_api_key = apiKey;
+            if (apiUrl) data.llm_api_url = apiUrl;
+            if (model) data.llm_model = model;
+
+            try {
+                const response = await fetch('/admin/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(result.message || '配置保存成功！', 'success');
+                    loadConfig();
+                    document.getElementById('config-form').reset();
+                } else {
+                    showMessage(result.message || '保存失败', 'error');
+                }
+            } catch (error) {
+                showMessage('保存配置失败: ' + error.message, 'error');
+            }
+        });
+
+        // 页面加载时获取当前配置
+        loadConfig();
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+services:
+  rustrans:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rustrans
+    ports:
+      - "9999:9999"
+    volumes:
+      # 只挂载配置文件以持久化配置（使用 bind mount）
+      - ./config.json:/app/config.json
+    restart: unless-stopped
+    networks:
+      - rustrans-network
+
+networks:
+  rustrans-network:
+    driver: bridge
