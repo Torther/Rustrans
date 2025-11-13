@@ -2,7 +2,7 @@
 
 基于 Rust 和大语言模型（LLM）的高性能翻译服务
 
-![CI/CD](https://github.com/Torther/rustrans/workflows/CI/CD%20Pipeline/badge.svg)
+![CI/CD](https://github.com/Torther/Rustrans/workflows/CI/CD%20Pipeline/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust](https://img.shields.io/badge/rust-1.91.0+-orange.svg)
 
@@ -23,8 +23,8 @@
 ### 使用 Docker（推荐）
 
 ```bash
-git clone https://github.com/Torther/rustrans.git
-cd rustrans
+git clone https://github.com/Torther/Rustrans.git
+cd Rustrans
 docker-compose up -d
 ```
 
@@ -34,8 +34,8 @@ docker-compose up -d
 
 1. **克隆仓库**：
 ```bash
-git clone https://github.com/Torther/rustrans.git
-cd rustrans
+git clone https://github.com/Torther/Rustrans.git
+cd Rustrans
 ```
 
 2. **安装依赖**（如果需要）：
@@ -244,7 +244,7 @@ make test-coverage
 ```bash
 make docker-build
 # 或者
-docker build -t rustrans:latest .
+docker build -t Rustrans:latest .
 ```
 
 ### 运行 Docker 容器
@@ -306,7 +306,7 @@ Rustrans 提供了完整的监控和健康检查功能：
 
 如果您遇到任何问题或有任何建议，请：
 
-1. 搜索现有 [Issues](https://github.com/Torther/rustrans/issues)
+1. 搜索现有 [Issues](https://github.com/Torther/Rustrans/issues)
 2. 创建新的 Issue
 3. 联系维护者
 

@@ -29,5 +29,5 @@ ls -la target/release/Rustrans
 
 echo ""
 echo "🐳 Docker 构建（可选）:"
-echo "docker build -t rustrans:test ."
+echo "docker build -t Rustrans:test ."
 echo ""
