@@ -1,14 +1,14 @@
 // HTTP 处理器模块
 
-use actix_web::{post, web, HttpResponse};
-use validator::Validate;
-use crate::models::{TranslateRequest, TranslateResponse};
 use crate::config::Config;
-use crate::language::select_target_language;
-use crate::translator::{translate_with_llm, process_translation_result};
 use crate::error::AppError;
 use crate::health;
+use crate::language::select_target_language;
+use crate::models::{TranslateRequest, TranslateResponse};
+use crate::translator::{process_translation_result, translate_with_llm};
+use actix_web::{post, web, HttpResponse};
 use std::sync::Arc;
+use validator::Validate;
 
 /// 翻译接口处理器
 #[post("/translate")]
@@ -35,11 +35,8 @@ pub async fn translate(
     }
 
     // 选择源语种和目标语种
-    let (from_lang, to_lang) = select_target_language(
-        &req.text,
-        &req.destination,
-        req.source.as_deref(),
-    );
+    let (from_lang, to_lang) =
+        select_target_language(&req.text, &req.destination, req.source.as_deref());
 
     // 克隆必要的配置数据，避免在 await 点持有锁
     let (api_url, api_key, model) = {
@@ -47,7 +44,7 @@ pub async fn translate(
         (
             config_guard.api_url().to_string(),
             config_guard.api_key().to_string(),
-            config_guard.model().to_string()
+            config_guard.model().to_string(),
         )
     };
 

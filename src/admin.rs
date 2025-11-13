@@ -1,8 +1,8 @@
 // 管理后台处理器模块
 
+use crate::config::Config;
 use actix_web::{get, post, web, HttpResponse};
 use serde::{Deserialize, Serialize};
-use crate::config::Config;
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -23,13 +23,13 @@ pub struct ConfigResponse {
 #[get("/admin/config")]
 pub async fn get_config(config: web::Data<Arc<RwLock<Config>>>) -> HttpResponse {
     let config = config.read().unwrap();
-    
+
     let response = ConfigResponse {
         llm_api_url: config.api_url().to_string(),
         llm_model: config.model().to_string(),
         llm_api_key_masked: mask_api_key(config.api_key()),
     };
-    
+
     HttpResponse::Ok().json(response)
 }
 
@@ -40,9 +40,9 @@ pub async fn update_config(
     config: web::Data<Arc<RwLock<Config>>>,
 ) -> HttpResponse {
     let mut config = config.write().unwrap();
-    
+
     let mut updated_fields = Vec::new();
-    
+
     // 更新 API Key（如果提供）
     if let Some(api_key) = &update.llm_api_key {
         if !api_key.is_empty() && api_key != "your-api-key-here" {
@@ -50,7 +50,7 @@ pub async fn update_config(
             updated_fields.push("API Key");
         }
     }
-    
+
     // 更新 API URL（如果提供）
     if let Some(api_url) = &update.llm_api_url {
         if !api_url.is_empty() {
@@ -58,7 +58,7 @@ pub async fn update_config(
             updated_fields.push("API URL");
         }
     }
-    
+
     // 更新模型（如果提供）
     if let Some(model) = &update.llm_model {
         if !model.is_empty() {
@@ -66,7 +66,7 @@ pub async fn update_config(
             updated_fields.push("模型");
         }
     }
-    
+
     if !updated_fields.is_empty() {
         // 保存配置到文件
         if let Err(e) = config.save_to_file("config.json") {
@@ -76,7 +76,7 @@ pub async fn update_config(
                 "message": format!("保存配置失败: {}", e)
             }));
         }
-        
+
         let updated_items = updated_fields.join("、");
         log::info!("配置已更新: {}", updated_items);
         HttpResponse::Ok().json(serde_json::json!({
@@ -105,7 +105,7 @@ fn mask_api_key(key: &str) -> String {
     if key.len() <= 8 {
         return "***".to_string();
     }
-    format!("{}...{}", &key[..4], &key[key.len()-4..])
+    format!("{}...{}", &key[..4], &key[key.len() - 4..])
 }
 
 #[cfg(test)]

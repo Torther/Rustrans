@@ -1,21 +1,21 @@
-mod models;
-mod language;
-mod translator;
-mod handlers;
-mod config;
 mod admin;
+mod config;
 mod error;
+mod handlers;
 mod health;
+mod language;
+mod models;
+mod translator;
 
-use actix_web::{App, HttpServer, web, middleware};
 use actix_cors::Cors;
+use actix_web::{middleware, web, App, HttpServer};
+use admin::{admin_index, get_config, update_config};
+use clap::Parser;
 use config::Config;
 use handlers::translate;
-use admin::{admin_index, get_config, update_config};
-use health::{health_check, metrics, llm_health_check, AppState};
-use std::sync::Arc;
+use health::{health_check, llm_health_check, metrics, AppState};
 use std::env;
-use clap::Parser;
+use std::sync::Arc;
 
 /// 翻译服务
 #[derive(Parser, Debug)]
@@ -31,10 +31,10 @@ struct Args {
 async fn main() -> std::io::Result<()> {
     // 解析命令行参数
     let args = Args::parse();
-    
+
     // 加载 .env 文件（可选）
     dotenv::dotenv().ok();
-    
+
     // 初始化日志，使用自定义格式
     env_logger::Builder::from_env(env_logger::Env::new().default_filter_or("info"))
         .format(|buf, record| {
@@ -48,7 +48,7 @@ async fn main() -> std::io::Result<()> {
             )
         })
         .init();
-    
+
     // 端口优先级: 命令行参数 > 环境变量 > 默认值(9999)
     let port = if let Some(p) = args.port {
         p
@@ -62,7 +62,10 @@ async fn main() -> std::io::Result<()> {
     let config = match Config::load() {
         Ok(cfg) => {
             if !cfg.is_configured() {
-                log::warn!("LLM 未配置，请访问 http://127.0.0.1:{}/admin 进行配置", port);
+                log::warn!(
+                    "LLM 未配置，请访问 http://127.0.0.1:{}/admin 进行配置",
+                    port
+                );
             }
             cfg
         }
@@ -71,7 +74,7 @@ async fn main() -> std::io::Result<()> {
             Config::default()
         }
     };
-    
+
     // 使用 Arc<RwLock> 包装配置，使其可以在运行时修改
     let shared_config = Arc::new(parking_lot::RwLock::new(config));
 

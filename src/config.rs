@@ -29,54 +29,51 @@ impl Config {
             llm_model: model,
         }
     }
-    
+
     /// 从配置文件加载
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, String> {
-        let content = fs::read_to_string(path)
-            .map_err(|e| format!("读取配置文件失败: {}", e))?;
-        
-        serde_json::from_str(&content)
-            .map_err(|e| format!("解析配置文件失败: {}", e))
+        let content = fs::read_to_string(path).map_err(|e| format!("读取配置文件失败: {}", e))?;
+
+        serde_json::from_str(&content).map_err(|e| format!("解析配置文件失败: {}", e))
     }
-    
+
     /// 保存到配置文件
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<(), String> {
-        let content = serde_json::to_string_pretty(self)
-            .map_err(|e| format!("序列化配置失败: {}", e))?;
-        
-        fs::write(path, content)
-            .map_err(|e| format!("写入配置文件失败: {}", e))
+        let content =
+            serde_json::to_string_pretty(self).map_err(|e| format!("序列化配置失败: {}", e))?;
+
+        fs::write(path, content).map_err(|e| format!("写入配置文件失败: {}", e))
     }
-    
+
     /// 加载配置（优先从文件，文件不存在则使用默认配置）
     pub fn load() -> Result<Self, String> {
         let config_path = "config.json";
-        
+
         if Path::new(config_path).exists() {
             Self::load_from_file(config_path)
         } else {
             Ok(Self::default())
         }
     }
-    
+
     /// 检查配置是否完整
     pub fn is_configured(&self) -> bool {
-        !self.llm_api_key.is_empty() 
-            && !self.llm_api_url.is_empty() 
+        !self.llm_api_key.is_empty()
+            && !self.llm_api_url.is_empty()
             && !self.llm_model.is_empty()
             && self.llm_api_key != "your-api-key-here"
     }
-    
+
     /// 获取大模型 API Key
     pub fn api_key(&self) -> &str {
         &self.llm_api_key
     }
-    
+
     /// 获取大模型 API URL
     pub fn api_url(&self) -> &str {
         &self.llm_api_url
     }
-    
+
     /// 获取大模型名称
     pub fn model(&self) -> &str {
         &self.llm_model

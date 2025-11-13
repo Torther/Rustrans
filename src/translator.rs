@@ -1,7 +1,7 @@
 // 大模型翻译服务模块
 
-use crate::models::{LLMRequest, LLMResponse, Message};
 use crate::config::Config;
+use crate::models::{LLMRequest, LLMResponse, Message};
 use pangu::spacing;
 
 // 全局HTTP客户端，复用连接池
@@ -64,6 +64,7 @@ pub async fn translate_with_llm(
 }
 
 /// 批量翻译接口，提高处理效率
+#[allow(dead_code)]
 pub async fn translate_batch_with_llm(
     config: &Config,
     texts: &[String],
@@ -75,59 +76,62 @@ pub async fn translate_batch_with_llm(
     let mut results = Vec::new();
 
     // 批量处理多个文本
-    let tasks: Vec<_> = texts.iter().map(|text| {
-        let config = config.clone();
-        let system_prompt = system_prompt.clone();
-        let text = text.clone();
+    let tasks: Vec<_> = texts
+        .iter()
+        .map(|text| {
+            let config = config.clone();
+            let system_prompt = system_prompt.clone();
+            let text = text.clone();
 
-        async move {
-            let request_body = LLMRequest {
-                model: config.model().to_string(),
-                messages: vec![
-                    Message {
-                        role: "system".to_string(),
-                        content: system_prompt,
-                    },
-                    Message {
-                        role: "user".to_string(),
-                        content: text,
-                    },
-                ],
-                temperature: 0.3,
-            };
+            async move {
+                let request_body = LLMRequest {
+                    model: config.model().to_string(),
+                    messages: vec![
+                        Message {
+                            role: "system".to_string(),
+                            content: system_prompt,
+                        },
+                        Message {
+                            role: "user".to_string(),
+                            content: text,
+                        },
+                    ],
+                    temperature: 0.3,
+                };
 
-            match HTTP_CLIENT
-                .post(config.api_url())
-                .header("Authorization", format!("Bearer {}", config.api_key()))
-                .header("Content-Type", "application/json")
-                .json(&request_body)
-                .send()
-                .await
-            {
-                Ok(response) => {
-                    if response.status().is_success() {
-                        match response.json::<LLMResponse>().await {
-                            Ok(llm_response) => {
-                                if let Some(choice) = llm_response.choices.first() {
-                                    let translated = choice.message.content.trim();
-                                    Ok(spacing(translated).to_string())
-                                } else {
-                                    Err("未收到翻译结果".to_string())
+                match HTTP_CLIENT
+                    .post(config.api_url())
+                    .header("Authorization", format!("Bearer {}", config.api_key()))
+                    .header("Content-Type", "application/json")
+                    .json(&request_body)
+                    .send()
+                    .await
+                {
+                    Ok(response) => {
+                        if response.status().is_success() {
+                            match response.json::<LLMResponse>().await {
+                                Ok(llm_response) => {
+                                    if let Some(choice) = llm_response.choices.first() {
+                                        let translated = choice.message.content.trim();
+                                        Ok(spacing(translated).to_string())
+                                    } else {
+                                        Err("未收到翻译结果".to_string())
+                                    }
                                 }
+                                Err(e) => Err(format!("解析响应失败: {}", e)),
                             }
-                            Err(e) => Err(format!("解析响应失败: {}", e))
-                        }
-                    } else {
-                        match response.text().await {
-                            Ok(error_text) => Err(format!("LLM API 错误: {}", error_text)),
-                            Err(e) => Err(format!("读取错误响应失败: {}", e))
+                        } else {
+                            match response.text().await {
+                                Ok(error_text) => Err(format!("LLM API 错误: {}", error_text)),
+                                Err(e) => Err(format!("读取错误响应失败: {}", e)),
+                            }
                         }
                     }
+                    Err(e) => Err(format!("网络请求失败: {}", e)),
                 }
-                Err(e) => Err(format!("网络请求失败: {}", e))
             }
-        }
-    }).collect();
+        })
+        .collect();
 
     // 并行执行所有翻译任务
     let batch_results = futures::future::join_all(tasks).await;

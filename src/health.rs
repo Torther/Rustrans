@@ -1,11 +1,11 @@
 // 健康检查和监控模块
 
+use crate::config::Config;
+use crate::error::{AppError, AppResult};
 use actix_web::{get, web, HttpResponse};
 use serde::Serialize;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use crate::config::Config;
-use crate::error::{AppError, AppResult};
 
 #[derive(Debug, Serialize)]
 pub struct HealthResponse {
@@ -57,13 +57,17 @@ impl AppState {
     }
 
     pub fn record_request(&self) {
-        self.requests_total.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        self.concurrent_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.requests_total
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.concurrent_requests
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn record_success(&self, duration: Duration) {
-        self.requests_success.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        self.concurrent_requests.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+        self.requests_success
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.concurrent_requests
+            .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
 
         // 记录响应时间，保持最近1000个请求
         let mut times = self.response_times.lock();
@@ -74,8 +78,10 @@ impl AppState {
     }
 
     pub fn record_error(&self) {
-        self.requests_error.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        self.concurrent_requests.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+        self.requests_error
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.concurrent_requests
+            .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
     }
 }
 
@@ -95,7 +101,12 @@ pub async fn health_check(
     let memory_usage = get_memory_usage();
 
     let response = HealthResponse {
-        status: if llm_configured { "healthy" } else { "degraded" }.to_string(),
+        status: if llm_configured {
+            "healthy"
+        } else {
+            "degraded"
+        }
+        .to_string(),
         timestamp: chrono::Local::now().to_rfc3339(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         uptime_seconds: uptime.as_secs(),
@@ -108,15 +119,21 @@ pub async fn health_check(
 
 /// 详细指标端点
 #[get("/metrics")]
-pub async fn metrics(
-    app_state: web::Data<AppState>,
-) -> AppResult<HttpResponse> {
+pub async fn metrics(app_state: web::Data<AppState>) -> AppResult<HttpResponse> {
     let uptime = app_state.start_time.elapsed();
 
-    let requests_total = app_state.requests_total.load(std::sync::atomic::Ordering::Relaxed);
-    let requests_success = app_state.requests_success.load(std::sync::atomic::Ordering::Relaxed);
-    let requests_error = app_state.requests_error.load(std::sync::atomic::Ordering::Relaxed);
-    let concurrent_requests = app_state.concurrent_requests.load(std::sync::atomic::Ordering::Relaxed);
+    let requests_total = app_state
+        .requests_total
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let requests_success = app_state
+        .requests_success
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let requests_error = app_state
+        .requests_error
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let concurrent_requests = app_state
+        .concurrent_requests
+        .load(std::sync::atomic::Ordering::Relaxed);
 
     let avg_response_time_ms = {
         let times = app_state.response_times.lock();
@@ -153,7 +170,7 @@ pub async fn llm_health_check(
         (
             config_guard.api_url().to_string(),
             config_guard.api_key().to_string(),
-            config_guard.model().to_string()
+            config_guard.model().to_string(),
         )
     };
 

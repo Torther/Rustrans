@@ -5,7 +5,7 @@ use whichlang::{detect_language as detect_lang, Lang};
 /// 检测文本的语种
 pub fn detect_language(text: &str) -> String {
     let detected = detect_lang(text);
-    
+
     match detected {
         Lang::Cmn => "中文(简体)".to_string(),
         Lang::Jpn => "日语".to_string(),
@@ -24,7 +24,7 @@ pub fn detect_language(text: &str) -> String {
 }
 
 /// 选择目标语种
-/// 
+///
 /// 如果检测到的语种与首要目标语种相同，则使用次要目标语种
 pub fn select_target_language(
     text: &str,
@@ -32,7 +32,7 @@ pub fn select_target_language(
     source: Option<&str>,
 ) -> (String, String) {
     let detected_lang = source.unwrap_or(&detect_language(text)).to_string();
-    
+
     let target_lang = if destination.is_empty() {
         "英语".to_string()
     } else if destination[0] == detected_lang && destination.len() > 1 {
@@ -40,7 +40,7 @@ pub fn select_target_language(
     } else {
         destination[0].clone()
     };
-    
+
     (detected_lang, target_lang)
 }
 
