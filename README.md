@@ -244,7 +244,7 @@ make test-coverage
 ```bash
 make docker-build
 # 或者
-docker build -t Rustrans:latest .
+docker build -t rustrans:latest .
 ```
 
 ### 运行 Docker 容器

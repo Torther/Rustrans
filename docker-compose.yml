@@ -1,9 +1,9 @@
 services:
-  Rustrans:
+  rustrans:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: Rustrans
+    container_name: rustrans
     ports:
       - "9999:9999"
     volumes:
@@ -11,8 +11,8 @@ services:
       - ./config.json:/app/config.json
     restart: unless-stopped
     networks:
-      - Rustrans-network
+      - rustrans-network
 
 networks:
-  Rustrans-network:
+  rustrans-network:
     driver: bridge

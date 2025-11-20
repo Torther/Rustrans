@@ -59,7 +59,7 @@ clean:
 # Docker 构建
 docker-build:
 	@echo "🐳 构建 Docker 镜像..."
-	docker build -t Rustrans:latest .
+	docker build -t rustrans:latest .
 
 # Docker 运行
 docker-run:
