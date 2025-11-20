@@ -14,6 +14,14 @@ lazy_static::lazy_static! {
         .expect("Failed to create HTTP client");
 }
 
+/// 处理系统提示词中的模板变量
+fn process_system_prompt(template: &str, from_lang: &str, to_lang: &str, text: &str) -> String {
+    template
+        .replace("{{from}}", from_lang)
+        .replace("{{to}}", to_lang)
+        .replace("{{text}}", text)
+}
+
 /// 调用大模型进行翻译
 pub async fn translate_with_llm(
     config: &Config,
@@ -21,7 +29,13 @@ pub async fn translate_with_llm(
     from_lang: &str,
     to_lang: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let system_prompt = build_system_prompt(from_lang, to_lang);
+    let system_prompt = if !config.system_prompt().is_empty() {
+        // 如果配置中有自定义系统提示词，处理模板变量
+        process_system_prompt(config.system_prompt(), from_lang, to_lang, text)
+    } else {
+        // 否则使用默认的系统提示词
+        build_system_prompt(from_lang, to_lang)
+    };
 
     let request_body = LLMRequest {
         model: config.model().to_string(),
@@ -71,7 +85,13 @@ pub async fn translate_batch_with_llm(
     from_lang: &str,
     to_lang: &str,
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let system_prompt = build_system_prompt(from_lang, to_lang);
+    // 对于批量翻译，使用通用提示词，不包含具体文本
+    let system_prompt = if !config.system_prompt().is_empty() {
+        // 处理系统提示词，但批量翻译时文本为空
+        process_system_prompt(config.system_prompt(), from_lang, to_lang, "")
+    } else {
+        build_system_prompt(from_lang, to_lang)
+    };
 
     let mut results = Vec::new();
 

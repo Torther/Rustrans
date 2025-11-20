@@ -9,6 +9,7 @@ pub struct Config {
     pub llm_api_key: String,
     pub llm_api_url: String,
     pub llm_model: String,
+    pub system_prompt: String,
 }
 
 impl Config {
@@ -18,15 +19,17 @@ impl Config {
             llm_api_key: String::new(),
             llm_api_url: String::new(),
             llm_model: String::new(),
+            system_prompt: String::from("你是一个专业的翻译助手。请将用户提供的文本准确、自然地翻译成目标语言。保持原文的语气和风格，确保翻译结果符合目标语言的表达习惯。只返回翻译结果，不要添加额外的解释或说明。"),
         }
     }
 
     /// 创建新的配置实例
-    pub fn new(api_url: String, api_key: String, model: String) -> Self {
+    pub fn new(api_url: String, api_key: String, model: String, system_prompt: String) -> Self {
         Self {
             llm_api_key: api_key,
             llm_api_url: api_url,
             llm_model: model,
+            system_prompt,
         }
     }
 
@@ -77,5 +80,10 @@ impl Config {
     /// 获取大模型名称
     pub fn model(&self) -> &str {
         &self.llm_model
+    }
+
+    /// 获取系统提示词
+    pub fn system_prompt(&self) -> &str {
+        &self.system_prompt
     }
 }

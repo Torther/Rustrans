@@ -3,13 +3,15 @@
 use crate::config::Config;
 use actix_web::{get, post, web, HttpResponse};
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use parking_lot::RwLock;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ConfigUpdate {
     pub llm_api_key: Option<String>,
     pub llm_api_url: Option<String>,
     pub llm_model: Option<String>,
+    pub system_prompt: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -17,17 +19,19 @@ pub struct ConfigResponse {
     pub llm_api_url: String,
     pub llm_model: String,
     pub llm_api_key_masked: String,
+    pub system_prompt: String,
 }
 
 /// 获取当前配置（API Key 会被脱敏）
 #[get("/admin/config")]
 pub async fn get_config(config: web::Data<Arc<RwLock<Config>>>) -> HttpResponse {
-    let config = config.read().unwrap();
+    let config = config.read();
 
     let response = ConfigResponse {
         llm_api_url: config.api_url().to_string(),
         llm_model: config.model().to_string(),
         llm_api_key_masked: mask_api_key(config.api_key()),
+        system_prompt: config.system_prompt().to_string(),
     };
 
     HttpResponse::Ok().json(response)
@@ -39,7 +43,7 @@ pub async fn update_config(
     update: web::Json<ConfigUpdate>,
     config: web::Data<Arc<RwLock<Config>>>,
 ) -> HttpResponse {
-    let mut config = config.write().unwrap();
+    let mut config = config.write();
 
     let mut updated_fields = Vec::new();
 
@@ -64,6 +68,14 @@ pub async fn update_config(
         if !model.is_empty() {
             config.llm_model = model.clone();
             updated_fields.push("模型");
+        }
+    }
+
+    // 更新系统提示词（如果提供）
+    if let Some(system_prompt) = &update.system_prompt {
+        if !system_prompt.is_empty() {
+            config.system_prompt = system_prompt.clone();
+            updated_fields.push("系统提示词");
         }
     }
 
